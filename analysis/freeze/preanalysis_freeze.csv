@@ -1,0 +1,4 @@
+"object","path","relative_path","sha256"
+"cohort","D:/Igor_Masters/Proj_PodAndGrainRot/analysis/data/processed/trial_cohort_v4.csv","data/processed/trial_cohort_v4.csv","c427a5869d6c63f91ea7149765d9f1847addef1872d7228e5a02ff665225b9c1"
+"weather","D:/Igor_Masters/Proj_PodAndGrainRot/analysis/data/processed/weather_era5_absolute_days.csv","data/processed/weather_era5_absolute_days.csv","1292663112113125edbe41a7dd66285d44ab9f124d0ef49751b6ca5d23218b06"
+"primary_specification","D:/Igor_Masters/Proj_PodAndGrainRot/analysis/config/frozen_primary_specification.csv","config/frozen_primary_specification.csv","38cadfc5a43ed57ea6d8baa67dc98849a84b323de9d5327617ddfbb97387f98f"

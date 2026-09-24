@@ -1,0 +1,25 @@
+"process","method","family","expected_fits","observed_fits","complete"
+"Tmin","Broad intervals","Primary",1,1,TRUE
+"LogRain","Broad intervals","Primary",1,1,TRUE
+"Tmax","Broad intervals","Primary",1,1,TRUE
+"RH","Broad intervals","Primary",1,1,TRUE
+"Tmin","Scalar on function","Primary",1,1,TRUE
+"LogRain","Scalar on function","Primary",1,1,TRUE
+"Tmax","Scalar on function","Primary",1,1,TRUE
+"RH","Scalar on function","Primary",1,1,TRUE
+"Tmin","Broad intervals","Shared sensitivities",3,3,TRUE
+"LogRain","Broad intervals","Shared sensitivities",3,3,TRUE
+"Tmax","Broad intervals","Shared sensitivities",3,3,TRUE
+"RH","Broad intervals","Shared sensitivities",3,3,TRUE
+"Tmin","Scalar on function","Shared sensitivities",3,3,TRUE
+"LogRain","Scalar on function","Shared sensitivities",3,3,TRUE
+"Tmax","Scalar on function","Shared sensitivities",3,3,TRUE
+"RH","Scalar on function","Shared sensitivities",3,3,TRUE
+"Tmin","Broad intervals","Season omissions",4,4,TRUE
+"LogRain","Broad intervals","Season omissions",4,4,TRUE
+"Tmax","Broad intervals","Season omissions",4,4,TRUE
+"RH","Broad intervals","Season omissions",4,4,TRUE
+"Tmin","Scalar on function","Season omissions",4,4,TRUE
+"LogRain","Scalar on function","Season omissions",4,4,TRUE
+"Tmax","Scalar on function","Season omissions",4,4,TRUE
+"RH","Scalar on function","Season omissions",4,4,TRUE

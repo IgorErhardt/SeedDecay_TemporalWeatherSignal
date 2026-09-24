@@ -1,0 +1,9 @@
+"interval","n_trials_with_any_pre_sowing_day","total_pre_sowing_trial_days","min_days_after_sowing","max_days_after_sowing"
+"-80:-71",0,0,13,66
+"-70:-61",0,0,23,76
+"-60:-51",0,0,33,86
+"-50:-41",0,0,43,96
+"-40:-31",0,0,53,106
+"-30:-21",0,0,63,116
+"-20:-11",0,0,73,126
+"-10:-1",0,0,83,136

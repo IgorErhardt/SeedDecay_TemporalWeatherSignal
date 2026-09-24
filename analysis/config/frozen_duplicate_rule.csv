@@ -1,0 +1,7 @@
+"threshold","rule","value"
+"date_overlap",">=",0.98
+"Tmax_correlation",">=",0.999
+"RH_correlation",">=",0.999
+"Tmax_sRMSE","<=",0.05
+"RH_sRMSE","<=",0.05
+"WetDay_agreement",">=",0.98

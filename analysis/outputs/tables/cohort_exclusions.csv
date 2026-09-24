@@ -1,0 +1,5 @@
+"source","source_row","trial_id","ga","reason"
+"original_csv",30,,16,"Missing required identity, date, outcome, or coordinate field"
+"original_csv",42,,,"Missing required identity, date, outcome, or coordinate field"
+"original_csv",43,,0.21,"Missing required identity, date, outcome, or coordinate field"
+"original_csv",40,"T036",54.14,"Documented experimental error: GA 54.14% is not a valid biological observation"

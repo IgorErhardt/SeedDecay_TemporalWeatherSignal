@@ -1,0 +1,2 @@
+"operational_anchor","source_date_preserved_as","correction_days","R7_verified","conclusion"
+"grain evaluation date (source evaluation_date + 20 days)","recorded_evaluation_date",20,FALSE,"Data providers clarified that grain evaluation occurred 20 days after the source evaluation_date; the corrected date is used as the weather anchor"

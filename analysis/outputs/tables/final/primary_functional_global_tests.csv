@@ -1,0 +1,5 @@
+"df_num","df_den","f_statistic","p_value","r_squared","adjusted_r_squared","incremental_r_squared","residual_sd","process","process_label","domain","role","response","n","days","functional_df","covariates","scenario"
+4,64,2.99527566001809,0.0249254671898807,0.191008530729133,0.102525088777632,0.151447028566831,8.49021819853117,"Tmin","Minimum temperature","Thermal","Retained process","ga",72,"-80:-1",4,"season","Primary"
+4,64,3.03197202172163,0.0236340689713747,0.192568381885784,0.104255548654542,0.153006879723482,8.48202907221077,"LogRain","Log rainfall amount","Rainfall","Retained process","ga",72,"-80:-1",4,"season","Primary"
+4,64,1.00424397961073,0.411986739519145,0.0962834934720244,-0.00256049942947278,0.0567219913097226,8.97352316211658,"Tmax","Maximum temperature","Thermal","Retained process","ga",72,"-80:-1",4,"season","Primary"
+4,64,1.9189311133045,0.11801813119899,0.142414473930679,0.0486160570168465,0.102852971768377,8.74149275627347,"RH","Relative humidity","Atmospheric moisture","Retained process","ga",72,"-80:-1",4,"season","Primary"

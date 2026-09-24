@@ -1,0 +1,9 @@
+"process","method","primary_p","sensitivity_support_fraction_p_le_0_10","loso_support_fraction_p_le_0_10","sensitivity_fits","loso_fits"
+"Tmin","Broad intervals",0.097358436656448,0.666666666666667,0.25,3,4
+"Tmin","Scalar on function",0.0249254671898807,1,0.5,3,4
+"LogRain","Broad intervals",0.0119853455361228,0.666666666666667,1,3,4
+"LogRain","Scalar on function",0.0236340689713747,1,0.75,3,4
+"Tmax","Broad intervals",0.0149025826812749,1,0.75,3,4
+"Tmax","Scalar on function",0.411986739519145,0,0,3,4
+"RH","Broad intervals",0.0078416964442937,1,1,3,4
+"RH","Scalar on function",0.11801813119899,0.666666666666667,0.25,3,4
