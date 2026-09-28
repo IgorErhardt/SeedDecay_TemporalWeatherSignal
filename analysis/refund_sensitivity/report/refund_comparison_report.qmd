@@ -14,9 +14,9 @@ This report evaluates which temporal weather associations from the fixed four-de
 
 ## Penalized specification
 
-Both models used the same 72 trials, weather processes, -80:-1-day domain, lag-specific centering, Gaussian damaged-grain response, season fixed effects, and meteorological-unit bootstrap. The penalized model used `refund::lf()` within `refund::pfr()`, a cubic P-spline with maximum basis dimension `k = 4`, a second-order difference penalty, Riemann integration, and REML smoothing selection. Effective degrees of freedom could therefore be lower than four.
+Both models used the same 72 trials, weather processes, -80:-1-day domain, lag-specific centering, Gaussian damaged-grain response, season fixed effects, and ERA5 cell-by-season cluster bootstrap. The penalized model used `refund::lf()` within `refund::pfr()`, a cubic P-spline with maximum basis dimension `k = 4`, a second-order difference penalty, Riemann integration, and REML smoothing selection. Effective degrees of freedom could therefore be lower than four.
 
-Uncertainty was estimated using 999 season-stratified meteorological-unit cluster-bootstrap samples. Daily curves use 95% simultaneous bands based on the maximum standardized bootstrap deviation. Integrated 10-day contrasts use percentile bootstrap intervals.
+Uncertainty was estimated using 999 season-stratified ERA5 cell-by-season cluster-bootstrap samples. Daily curves use 95% simultaneous bands based on the maximum standardized bootstrap deviation. Integrated 10-day contrasts use percentile bootstrap intervals.
 
 ## Which associations survived penalization?
 
@@ -39,7 +39,7 @@ Uncertainty was estimated using 999 season-stratified meteorological-unit cluste
 
 ![](../outputs/figures/penalized_comparison/figure1_penalized_curve_comparison.png){fig-alt="Primary and REML-penalized coefficient curves with simultaneous bands."}
 
-**Figure 1.** Daily coefficient functions from the primary and REML-penalized models. Curves are scaled per one overall standard deviation of each process. Shading represents 95% simultaneous meteorological-unit cluster-bootstrap bands.
+**Figure 1.** Daily coefficient functions from the primary and REML-penalized models. Curves are scaled per one overall standard deviation of each process. Shading represents 95% simultaneous ERA5 cell-by-season cluster-bootstrap bands.
 
 The penalized simultaneous daily bands included zero throughout the complete domain for all four processes. This stringent whole-curve result does not contradict supported integrated contrasts: an interval contrast estimates the cumulative association across ten adjacent days rather than requiring an individual daily coefficient to exclude zero simultaneously.
 
@@ -54,7 +54,7 @@ The penalized simultaneous daily bands included zero throughout the complete dom
 
 ![](../outputs/figures/penalized_comparison/figure2_penalized_interval_comparison.png){fig-alt="Primary and REML-penalized integrated interval contrasts."}
 
-**Figure 2.** Integrated coefficient contrasts for the eight prespecified 10-day intervals. Error bars are percentile meteorological-unit cluster-bootstrap intervals.
+**Figure 2.** Integrated coefficient contrasts for the eight prespecified 10-day intervals. Error bars are percentile ERA5 cell-by-season cluster-bootstrap intervals.
 
 ## Leave-one-season-out stability
 

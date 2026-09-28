@@ -89,11 +89,11 @@ fit_refund <- function(trials, mat, days, response = "ga", center = NULL) {
 }
 
 bootstrap_refund <- function(trials, mat, fit_obj, days, reps, seed,
-                             unit_col = "met_unit", strata_col = "season") {
+                             unit_col = "weather_cluster_id", strata_col = "season") {
   set.seed(seed)
   units <- unique(trials[c(unit_col, strata_col)])
   if (anyDuplicated(units[[unit_col]])) {
-    stop("Meteorological units cross seasons; stratified cluster bootstrap is invalid.")
+    stop("Bootstrap clusters cross seasons; stratified cluster bootstrap is invalid.")
   }
   strata <- split(units[[unit_col]], units[[strata_col]])
   curves <- matrix(NA_real_, reps, length(days))
@@ -286,7 +286,7 @@ spec <- data.frame(
             paste(registry$process, collapse = "|"), "GA percentage points",
             "season fixed effect", "refund::lf() in refund::pfr()",
             "cubic P-spline", "4", "second-order difference", "REML", "Riemann",
-            "season-stratified meteorological-unit cluster bootstrap", bootstrap_reps,
+            "season-stratified ERA5 cell-by-season cluster bootstrap", bootstrap_reps,
             seed_base, as.character(utils::packageVersion("refund")), R.version.string)
 )
 v4_write_csv(spec, file.path(root, "config", "frozen_refund_specification.csv"))

@@ -8,7 +8,7 @@ regularization.
 The sensitivity analysis uses the same 72-trial cohort, pinned ERA5 weather,
 corrected recorded evaluation date, -80:-1-day domain, four retained weather
 processes, lag-specific centering, season fixed effect, and
-season-stratified meteorological-unit cluster bootstrap as the primary
+season-stratified ERA5 cell-by-season cluster bootstrap as the primary
 analysis. It does not modify the primary fitted objects or outputs.
 
 The penalized model uses a linear functional term, cubic P-spline basis with

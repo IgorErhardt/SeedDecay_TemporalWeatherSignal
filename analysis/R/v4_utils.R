@@ -135,38 +135,98 @@ v4_interval_features <- function(mat, days, process) {
   out
 }
 
-v4_global_lm <- function(data, response, feature_cols, covariates = "season") {
+v4_global_lm <- function(data, response, feature_cols, covariates = "season",
+                         cluster_col = NULL) {
   terms0 <- covariates[covariates %in% names(data)]
   rhs0 <- if (length(terms0)) paste(terms0, collapse = " + ") else "1"
   reduced <- stats::lm(stats::as.formula(paste(response, "~", rhs0)), data = data)
   full <- stats::lm(stats::as.formula(paste(response, "~", paste(c(rhs0, feature_cols), collapse = " + "))), data = data)
   av <- stats::anova(reduced, full)
   sm <- summary(full)
+  naive_global <- data.frame(
+    df_num = av$Df[2], df_den = stats::df.residual(full),
+    f_statistic = av$F[2], p_value = av$`Pr(>F)`[2]
+  )
+  global <- data.frame(
+    df_num = naive_global$df_num, df_den = naive_global$df_den,
+    f_statistic = naive_global$f_statistic, p_value = naive_global$p_value,
+    r_squared = sm$r.squared, adjusted_r_squared = sm$adj.r.squared,
+    incremental_r_squared = sm$r.squared - summary(reduced)$r.squared,
+    residual_sd = sm$sigma,
+    naive_df_num = naive_global$df_num, naive_df_den = naive_global$df_den,
+    naive_f_statistic = naive_global$f_statistic,
+    naive_p_value = naive_global$p_value,
+    n_clusters = NA_integer_, inference = "ordinary OLS"
+  )
+  vcov_cr2 <- NULL
+  coefficient_test <- NULL
+  if (!is.null(cluster_col)) {
+    if (!cluster_col %in% names(data)) stop("Cluster column not found: ", cluster_col)
+    if (!requireNamespace("clubSandwich", quietly = TRUE))
+      stop("Package 'clubSandwich' is required for CR2 cluster-robust inference.")
+    cluster <- data[[cluster_col]]
+    if (anyNA(cluster)) stop("Missing values in cluster column: ", cluster_col)
+    vcov_cr2 <- clubSandwich::vcovCR(full, cluster = cluster, type = "CR2")
+    coefficient_test <- as.data.frame(clubSandwich::coef_test(
+      full, vcov = vcov_cr2, test = "Satterthwaite"
+    ))
+    wald <- as.data.frame(clubSandwich::Wald_test(
+      full,
+      constraints = clubSandwich::constrain_zero(feature_cols),
+      vcov = vcov_cr2,
+      test = "HTZ"
+    ))
+    global$df_num <- wald$df_num[1]
+    global$df_den <- wald$df_denom[1]
+    global$f_statistic <- wald$Fstat[1]
+    global$p_value <- wald$p_val[1]
+    global$n_clusters <- length(unique(cluster))
+    global$inference <- paste0("CR2/HTZ clustered by ", cluster_col)
+  }
   list(
     reduced = reduced,
     full = full,
-    global = data.frame(
-      df_num = av$Df[2], df_den = stats::df.residual(full),
-      f_statistic = av$F[2], p_value = av$`Pr(>F)`[2],
-      r_squared = sm$r.squared, adjusted_r_squared = sm$adj.r.squared,
-      incremental_r_squared = sm$r.squared - summary(reduced)$r.squared,
-      residual_sd = sm$sigma
-    )
+    global = global,
+    vcov_cr2 = vcov_cr2,
+    coefficient_test = coefficient_test
   )
 }
 
-v4_tidy_lm <- function(fit, feature_cols, interval_labels, scales = NULL) {
+v4_tidy_lm <- function(fit, feature_cols, interval_labels, scales = NULL,
+                       coefficient_test = NULL) {
   cf <- summary(fit)$coefficients
   keep <- match(feature_cols, rownames(cf))
+  naive_critical <- stats::qt(0.975, stats::df.residual(fit))
   out <- data.frame(
     feature = feature_cols,
     interval = interval_labels,
     estimate = cf[keep, 1],
     std_error = cf[keep, 2],
-    conf_low = cf[keep, 1] - stats::qt(0.975, stats::df.residual(fit)) * cf[keep, 2],
-    conf_high = cf[keep, 1] + stats::qt(0.975, stats::df.residual(fit)) * cf[keep, 2],
-    p_value = cf[keep, 4]
+    conf_low = cf[keep, 1] - naive_critical * cf[keep, 2],
+    conf_high = cf[keep, 1] + naive_critical * cf[keep, 2],
+    p_value = cf[keep, 4],
+    df = stats::df.residual(fit),
+    naive_std_error = cf[keep, 2],
+    naive_conf_low = cf[keep, 1] - naive_critical * cf[keep, 2],
+    naive_conf_high = cf[keep, 1] + naive_critical * cf[keep, 2],
+    naive_p_value = cf[keep, 4],
+    inference = "ordinary OLS"
   )
+  if (!is.null(coefficient_test)) {
+    term <- if ("Coef" %in% names(coefficient_test)) {
+      as.character(coefficient_test$Coef)
+    } else rownames(coefficient_test)
+    robust_keep <- match(feature_cols, term)
+    if (anyNA(robust_keep)) stop("CR2 coefficient test did not contain every weather feature.")
+    robust <- coefficient_test[robust_keep, , drop = FALSE]
+    critical <- stats::qt(0.975, robust$df_Satt)
+    out$std_error <- robust$SE
+    out$conf_low <- out$estimate - critical * robust$SE
+    out$conf_high <- out$estimate + critical * robust$SE
+    out$p_value <- robust$p_Satt
+    out$df <- robust$df_Satt
+    out$inference <- "CR2 with Satterthwaite degrees of freedom"
+  }
   if (!is.null(scales)) {
     out$feature_sd <- as.numeric(scales[feature_cols])
     out$estimate_unstandardized <- out$estimate / out$feature_sd
@@ -192,23 +252,26 @@ v4_functional_design <- function(mat, days, df = 4L, center = NULL) {
   list(scores = scores, basis = B, center = center)
 }
 
-v4_fit_functional <- function(trials, mat, days, response = "ga", covariates = "season", df = 4L, center = NULL) {
+v4_fit_functional <- function(trials, mat, days, response = "ga", covariates = "season",
+                              df = 4L, center = NULL, cluster_col = NULL) {
   des <- v4_functional_design(mat, days, df, center)
   dat <- cbind(trials, as.data.frame(des$scores))
   score_cols <- colnames(des$scores)
-  fit <- v4_global_lm(dat, response, score_cols, covariates)
+  fit <- v4_global_lm(dat, response, score_cols, covariates, cluster_col)
   theta <- stats::coef(fit$full)[score_cols]
   beta <- as.vector(des$basis %*% theta)
   list(full = fit$full, reduced = fit$reduced, global = fit$global, beta = beta,
        basis = des$basis, center = des$center, scores = des$scores,
-       score_cols = score_cols, days = days, response = response, covariates = covariates)
+       score_cols = score_cols, days = days, response = response,
+       covariates = covariates, cluster_col = cluster_col,
+       vcov_cr2 = fit$vcov_cr2, coefficient_test = fit$coefficient_test)
 }
 
-v4_cluster_bootstrap_curves <- function(trials, mat, fit_obj, unit_col = "met_unit",
+v4_cluster_bootstrap_curves <- function(trials, mat, fit_obj, unit_col = "weather_cluster_id",
                                         strata_col = "season", reps = 999L, seed = 24041987L) {
   set.seed(seed)
   units <- unique(trials[c(unit_col, strata_col)])
-  if (anyDuplicated(units[[unit_col]])) stop("Meteorological units cross strata; cannot use stratified unit bootstrap.")
+  if (anyDuplicated(units[[unit_col]])) stop("Bootstrap clusters cross strata; cannot use stratified cluster bootstrap.")
   strata <- split(units[[unit_col]], units[[strata_col]])
   curves <- matrix(NA_real_, nrow = reps, ncol = length(fit_obj$days))
   int_map <- v4_interval_map(fit_obj$days)
@@ -226,7 +289,8 @@ v4_cluster_bootstrap_curves <- function(trials, mat, fit_obj, unit_col = "met_un
     mb <- mat[idx, , drop = FALSE]
     ok <- tryCatch({
       fb <- v4_fit_functional(trb, mb, fit_obj$days, fit_obj$response,
-                              fit_obj$covariates, ncol(fit_obj$basis), fit_obj$center)
+                              fit_obj$covariates, ncol(fit_obj$basis), fit_obj$center,
+                              cluster_col = NULL)
       curves[b, ] <- fb$beta
       contrasts[b, ] <- vapply(levels(int_map), function(z) sum(fb$beta[int_map == z]), numeric(1))
       TRUE

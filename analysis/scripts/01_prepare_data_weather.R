@@ -132,7 +132,7 @@ v4_write_csv(data.frame(
 ), file.path(p$tables, "temporal_anchor_conclusion.csv"))
 
 # Retrieve one trial at a time so interrupted runs resume from validated fragments.
-if (!requireNamespace("r4pde", quietly = TRUE)) stop("Package 'r4pde' is required.")
+# r4pde is required only when a validated pinned cache fragment is unavailable.
 weather_parts <- vector("list", nrow(trials))
 retrieval_log <- vector("list", nrow(trials))
 for (i in seq_len(nrow(trials))) {
@@ -148,6 +148,8 @@ for (i in seq_len(nrow(trials))) {
       all(c("T2M", "T2M_MAX", "T2M_MIN", "RH2M", "PRECTOTCORR") %in% names(z))
   }
   if (!use_cache) {
+    if (!requireNamespace("r4pde", quietly = TRUE))
+      stop("Package 'r4pde' and its imports are required to refresh missing weather cache files.")
     request <- data.frame(study = id, latitude = trials$latitude[i], longitude = trials$longitude[i],
                           evaluation_date = trials$evaluation_date[i])
     z <- r4pde::get_era5(
@@ -206,6 +208,40 @@ if (any(qa_by_trial$rows != length(primary_days) | !qa_by_trial$calendar_complet
 }
 v4_write_csv(qa_by_trial, file.path(p$tables, "weather_quality_audit.csv"))
 v4_write_csv(retrieval_log, file.path(p$provenance, "era5_retrieval_manifest.csv"))
+
+# Define the inferential clustering unit from the actual ERA5 grid coordinates
+# returned for each trial. Cell-by-season clusters allow outcomes sharing the
+# same gridded weather source within a growing season to have correlated errors.
+grid_by_trial <- unique(weather[c("trial_id", "longitude", "latitude")])
+if (anyDuplicated(grid_by_trial$trial_id) || nrow(grid_by_trial) != nrow(trials))
+  stop("Each trial must map to exactly one ERA5 grid cell.")
+grid_by_trial$cell_key <- sprintf("%.6f|%.6f", grid_by_trial$longitude,
+                                  grid_by_trial$latitude)
+cell_keys <- sort(unique(grid_by_trial$cell_key))
+cell_ids <- setNames(sprintf("ERA5C%02d", seq_along(cell_keys)), cell_keys)
+grid_by_trial$era5_cell_id <- unname(cell_ids[grid_by_trial$cell_key])
+trials$era5_cell_id <- grid_by_trial$era5_cell_id[
+  match(trials$trial_id, grid_by_trial$trial_id)
+]
+trials$weather_cluster_id <- paste(trials$era5_cell_id, trials$season, sep = "__")
+weather$era5_cell_id <- trials$era5_cell_id[match(weather$trial_id, trials$trial_id)]
+weather$weather_cluster_id <- trials$weather_cluster_id[
+  match(weather$trial_id, trials$trial_id)
+]
+weather_cluster_map <- trials[c("trial_id", "season", "era5_cell_id",
+                                "weather_cluster_id")]
+weather_cluster_map$era5_longitude <- grid_by_trial$longitude[
+  match(weather_cluster_map$trial_id, grid_by_trial$trial_id)
+]
+weather_cluster_map$era5_latitude <- grid_by_trial$latitude[
+  match(weather_cluster_map$trial_id, grid_by_trial$trial_id)
+]
+cluster_sizes <- table(weather_cluster_map$weather_cluster_id)
+weather_cluster_map$cluster_n_trials <- as.integer(
+  cluster_sizes[weather_cluster_map$weather_cluster_id]
+)
+v4_write_csv(weather_cluster_map,
+             file.path(p$tables, "weather_cell_season_cluster_map.csv"))
 saveRDS(weather, file.path(p$processed, "weather_era5_absolute_days.rds"))
 v4_write_csv(weather, file.path(p$processed, "weather_era5_absolute_days.csv"))
 
@@ -261,25 +297,6 @@ v4_write_csv(pre_sowing_audit, file.path(p$tables, "pre_sowing_exposure_audit.cs
 saveRDS(trials, file.path(p$processed, "trial_cohort_v4.rds"))
 v4_write_csv(trials, file.path(p$processed, "trial_cohort_v4.csv"))
 
-# Aggregate exact/near-duplicate histories transparently for the major sensitivity.
-unit_first <- !duplicated(trials$met_unit)
-unit_trials <- trials[unit_first, , drop = FALSE]
-unit_trials$trial_id <- unit_trials$met_unit
-unit_trials$ga <- as.numeric(tapply(trials$ga, trials$met_unit, mean)[unit_trials$met_unit])
-unit_trials$member_trials <- vapply(unit_trials$met_unit, function(u) paste(trials$trial_id[trials$met_unit == u], collapse = "|"), character(1))
-unit_trials$unit_n <- as.integer(unit_sizes[unit_trials$met_unit])
-# The representative weather trajectory is selected by the first member, while GA is averaged.
-unit_weather_parts <- lapply(unit_trials$met_unit, function(u) {
-  member <- trials$trial_id[trials$met_unit == u][1]
-  z <- weather[weather$trial_id == member, , drop = FALSE]
-  z$trial_id <- u
-  z
-})
-unit_weather <- do.call(rbind, unit_weather_parts)
-saveRDS(unit_trials, file.path(p$processed, "meteorological_unit_cohort.rds"))
-saveRDS(unit_weather, file.path(p$processed, "meteorological_unit_weather.rds"))
-v4_write_csv(unit_trials, file.path(p$processed, "meteorological_unit_cohort.csv"))
-
 # Frozen prespecified rules. This file is written before outcome-weather models are fitted.
 spec <- data.frame(
   item = c("analysis_name", "primary_outcome", "sensitivity_outcome", "anchor_label",
@@ -287,16 +304,21 @@ spec <- data.frame(
            "primary_days", "weather_product", "weather_function", "weather_model_argument",
            "primary_processes", "wetday_threshold_mm", "broad_intervals", "functional_basis", "functional_df",
            "bootstrap_reps_primary", "bootstrap_reps_sensitivity", "bootstrap_unit", "bootstrap_stratification",
+           "primary_inference", "n_era5_cells", "n_weather_clusters",
            "simultaneous_band", "primary_adjustment", "excluded_primary_covariates", "influence_rule",
-           "duplicate_rule", "seed_primary", "seed_sensitivity", "n_trials", "n_meteorological_units",
+           "duplicate_rule", "seed_primary", "seed_sensitivity", "n_trials", "n_duplicate_history_groups",
            "postfreeze_gate"),
   value = c("Version 4 clean absolute-time analysis", "GA percentage points", "log1p(GA)",
             "grain evaluation date (source evaluation_date + 20 days)",
             "recorded_evaluation_date", "20", "TRUE", "-80:-1", "ERA5",
             "r4pde::get_era5", "models='era5'", "Tmin|LogRain|Tmax|RH", "1",
             "eight fixed 10-day intervals", "cubic B-spline", "4", "999", "499",
-            "meteorological exposure unit cluster", "season", "bootstrap maximum standardized deviation",
-            "season", "state|cycle duration|sowing date", "GA outside Tukey 1.5-IQR fences computed before weather modeling",
+            "ERA5 cell-by-season cluster", "season",
+            "CR2 covariance; Satterthwaite coefficient tests; HTZ process tests",
+            as.character(length(unique(trials$era5_cell_id))),
+            as.character(length(unique(trials$weather_cluster_id))),
+            "bootstrap maximum standardized deviation",
+            "season", "state", "GA outside Tukey 1.5-IQR fences computed before weather modeling",
             "same ERA5 grid; date overlap>=0.98; Tmax/RH correlations>=0.999; standardized RMSE<=0.05; WetDay agreement>=0.98",
             as.character(seed_primary), "24041988", as.character(nrow(trials)), as.character(length(unique(trials$met_unit))),
             "No prior-analysis result may be read until primary and sensitivity freeze manifests exist")
@@ -321,4 +343,7 @@ v4_write_csv(data.frame(object = c("cohort", "weather", "primary_specification")
 
 capture.output(sessionInfo(), file = file.path(p$provenance, "sessionInfo_prepare.txt"))
 cat("Prepared and frozen Version 4 cohort/weather inputs.\n")
-cat("Trials:", nrow(trials), " Meteorological units:", length(unique(trials$met_unit)), "\n")
+cat("Trials:", nrow(trials),
+    " ERA5 cells:", length(unique(trials$era5_cell_id)),
+    " Cell-season clusters:", length(unique(trials$weather_cluster_id)),
+    " Near-duplicate history groups:", length(unique(trials$met_unit)), "\n")

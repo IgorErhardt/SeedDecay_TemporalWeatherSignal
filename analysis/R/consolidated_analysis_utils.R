@@ -45,6 +45,7 @@ consolidated_bind <- function(x) {
 
 consolidated_fit_set <- function(trials, weather, registry, days = -80:-1,
                                  response = "ga", covariates = "season",
+                                 cluster_col = "weather_cluster_id",
                                  bootstrap_reps = 999L, bootstrap = TRUE,
                                  seed_base = 24041987L) {
   broad_coef <- broad_global <- curves <- contrasts <- functional_global <- objects <- list()
@@ -61,10 +62,12 @@ consolidated_fit_set <- function(trials, weather, registry, days = -80:-1,
     zfeats <- as.data.frame(Map(function(x, s) (x - mean(x)) / s, feats, feature_sd),
                                 check.names = FALSE)
     names(zfeats) <- cols
-    fit_z <- v4_global_lm(cbind(trials, zfeats), response, cols, covariates)
-    fit_raw <- v4_global_lm(cbind(trials, feats), response, cols, covariates)
-    bc <- v4_tidy_lm(fit_z$full, cols, intervals)
-    raw <- v4_tidy_lm(fit_raw$full, cols, intervals)
+    fit_z <- v4_global_lm(cbind(trials, zfeats), response, cols, covariates, cluster_col)
+    fit_raw <- v4_global_lm(cbind(trials, feats), response, cols, covariates, cluster_col)
+    bc <- v4_tidy_lm(fit_z$full, cols, intervals,
+                     coefficient_test = fit_z$coefficient_test)
+    raw <- v4_tidy_lm(fit_raw$full, cols, intervals,
+                      coefficient_test = fit_raw$coefficient_test)
     bc$raw_estimate <- raw$estimate
     bc$raw_conf_low <- raw$conf_low
     bc$raw_conf_high <- raw$conf_high
@@ -86,10 +89,12 @@ consolidated_fit_set <- function(trials, weather, registry, days = -80:-1,
     bg$covariates <- paste(covariates, collapse = "|")
     broad_global[[proc]] <- bg
 
-    ff <- v4_fit_functional(trials, mat, days, response, covariates, 4L)
+    ff <- v4_fit_functional(trials, mat, days, response, covariates, 4L,
+                            cluster_col = cluster_col)
     process_sd <- stats::sd(as.vector(mat))
     if (bootstrap) {
       fb <- v4_cluster_bootstrap_curves(trials, mat, ff, reps = bootstrap_reps,
+                                        unit_col = cluster_col,
                                         seed = seed_base + meta$seed_offset)
       fc <- data.frame(lag_day = days, beta = ff$beta,
                        conf_low = fb$conf_low, conf_high = fb$conf_high,

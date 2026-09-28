@@ -17,8 +17,16 @@ weather <- readRDS(file.path(p$processed, "weather_era5_absolute_days.rds"))
 registry <- consolidated_registry()
 analysis_days <- -80:-1
 add("Cohort size", nrow(trials) == 72L, paste(nrow(trials), "trials"))
-add("Meteorological units", length(unique(trials$met_unit)) >= 1L,
-    paste(length(unique(trials$met_unit)), "units"))
+add("Duplicate-history audit", length(unique(trials$met_unit)) == 70L,
+    paste(length(unique(trials$met_unit)), "near-duplicate history groups; audit only"))
+add("ERA5 grid cells", "era5_cell_id" %in% names(trials) &&
+      length(unique(trials$era5_cell_id)) == 15L,
+    paste(length(unique(trials$era5_cell_id)), "cells"))
+add("ERA5 cell-season clusters", "weather_cluster_id" %in% names(trials) &&
+      length(unique(trials$weather_cluster_id)) == 36L &&
+      all(vapply(split(trials$season, trials$weather_cluster_id),
+                 function(x) length(unique(x)) == 1L, logical(1))),
+    paste(length(unique(trials$weather_cluster_id)), "clusters"))
 add("Source date preserved", all(c("recorded_evaluation_date", "grain_evaluation_date") %in% names(trials)),
     paste(intersect(c("recorded_evaluation_date", "grain_evaluation_date"), names(trials)), collapse = "|"))
 add("Twenty-day correction", all(trials$grain_evaluation_date == trials$recorded_evaluation_date + 20L),
@@ -38,6 +46,14 @@ add("Primary broad rows", nrow(utils::read.csv(file.path(ft, "primary_broad_coef
     paste(n_processes, "processes x 8 intervals"))
 add("Primary functional rows", nrow(utils::read.csv(file.path(ft, "primary_functional_curves.csv"))) == n_processes * 80L,
     paste(n_processes, "processes x 80 lags"))
+primary_broad_global <- utils::read.csv(file.path(ft, "primary_broad_global_tests.csv"))
+primary_functional_global <- utils::read.csv(file.path(ft, "primary_functional_global_tests.csv"))
+add("Primary clustered inference",
+    all(primary_broad_global$n_clusters == 36L) &&
+      all(primary_functional_global$n_clusters == 36L) &&
+      all(grepl("CR2/HTZ", primary_broad_global$inference, fixed = TRUE)) &&
+      all(grepl("CR2/HTZ", primary_functional_global$inference, fixed = TRUE)),
+    "broad and functional global tests use CR2/HTZ across 36 cell-season clusters")
 
 # REML-penalized scalar-on-function sensitivity is fitted after the frozen
 # primary models and must cover the same processes and lag domain.
@@ -72,10 +88,10 @@ model_processes <- sort(names(models$primary))
 add("Cached-model process registry", identical(model_processes, sort(registry$process)),
     paste(length(model_processes), "primary process objects"))
 add("Cached-model scenario coverage",
-    length(models$sensitivities) == 3L && length(models$loso) == 4L &&
+    length(models$sensitivities) == 4L && length(models$loso) == 4L &&
       all(vapply(models$sensitivities, length, integer(1)) == n_processes) &&
       all(vapply(models$loso, length, integer(1)) == n_processes),
-    paste("3 sensitivities and 4 season omissions, each with", n_processes, "processes"))
+    paste("4 sensitivities and 4 season omissions, each with", n_processes, "processes"))
 
 expected_figures <- c(
   "figure1_trial_locations_map.png", "figure2_all_process_broad_intervals.png",

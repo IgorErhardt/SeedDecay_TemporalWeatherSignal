@@ -33,7 +33,19 @@ owned <- c(
   "figure8_ga_distributions.png", "figure3b_functional_pointwise_bootstrap.png"
 )
 obsolete_owned <- c("figureS4_broad_residual_diagnostics.png",
-                    "figureS5_functional_residual_diagnostics.png")
+                    "figureS5_functional_residual_diagnostics.png",
+                    "figure2_ga_distributions.png",
+                    "figure3_all_process_broad_intervals.png",
+                    "figure6_all_process_functional_curves.png",
+                    "figure7b_functional_shared_sensitivities.png",
+                    "figure8_functional_loso_stability.png",
+                    "figureS1_functional_coefficient_heatmap.png",
+                    "figureS2_broad_residual_vs_fitted.png",
+                    "figureS3_broad_normal_qq.png",
+                    "figureS4_functional_residual_vs_fitted.png",
+                    "figureS5_functional_normal_qq.png",
+                    "figureS6_refund_penalized_curves.png",
+                    "figureS7_refund_penalized_contrasts.png")
 to_remove <- c(owned, obsolete_owned)
 unlink(file.path(out, to_remove[file.exists(file.path(out, to_remove))]))
 
@@ -180,7 +192,6 @@ g3b <- ggplot(primary_f, aes(lag_day, beta_per_process_sd, color = process, fill
 save_final(g3b, "figure3b_functional_pointwise_bootstrap.png", 8.1, 8.3)
 
 trials <- readRDS(file.path(p$processed, "trial_cohort_v4_with_outcome_flags.rds"))
-units <- readRDS(file.path(p$processed, "meteorological_unit_cohort.rds"))
 trials$log_ga <- log1p(trials$ga)
 
 # Four-panel outcome description: overall distributions on the original and
@@ -225,14 +236,16 @@ g8d <- ggplot(trials, aes(cultivar_plot, ga, fill = cultivar_plot)) +
 save_final((g8a | g8b) / (g8c | g8d), "figure8_ga_distributions.png", 8.4, 7.3)
 
 response_sd <- c("Primary" = sd(trials$ga), "log1p(GA)" = sd(trials$log_ga),
-                 "Meteorological units" = sd(units$ga),
-                 "Exclude high GA" = sd(trials$ga[!trials$outcome_influence_flag]))
+                 "Exclude high GA" = sd(trials$ga[!trials$outcome_influence_flag]),
+                 "Sowing day + cultivar" = sd(trials$ga),
+                 "Cycle duration + cultivar" = sd(trials$ga))
 sens_b <- rbind(read_final("primary_broad_coefficients.csv"),
                 read_final("sensitivity_broad_coefficients.csv"))
 sens_b$outcome_sd <- unname(response_sd[sens_b$scenario])
 sens_b$scenario <- factor(sens_b$scenario,
                           levels = c("Primary", "log1p(GA)",
-                                     "Meteorological units", "Exclude high GA"))
+                                     "Exclude high GA",
+                                     "Sowing day + cultivar", "Cycle duration + cultivar"))
 sens_b$std_estimate <- sens_b$estimate / sens_b$outcome_sd
 sens_b$std_low <- sens_b$conf_low / sens_b$outcome_sd
 sens_b$std_high <- sens_b$conf_high / sens_b$outcome_sd
@@ -246,7 +259,8 @@ g4 <- ggplot(sens_b, aes(interval, std_estimate, color = scenario, group = scena
   facet_wrap(~process, ncol = 2, scales = "free_y") + panel_letter_layer(sens_b, "process") +
   labs(x = "Days before grain evaluation", y = "Outcome SD per exposure-summary SD") +
   theme_paper(8.6) + theme(axis.text.x = element_text(angle = 40, hjust = 1),
-                           legend.text = element_text(size = 7.5))
+                           legend.text = element_text(size = 7.5)) +
+  guides(color = guide_legend(nrow = 2, byrow = TRUE))
 save_final(g4, owned[4], 9.0, 9.0)
 
 loso_b <- read_final("loso_broad_coefficients.csv")
@@ -276,7 +290,8 @@ sens_f$outcome_sd <- unname(response_sd[sens_f$scenario])
 sens_f$std_beta <- sens_f$beta_per_process_sd / sens_f$outcome_sd
 sens_f$scenario <- factor(sens_f$scenario,
                           levels = c("Primary", "log1p(GA)",
-                                     "Meteorological units", "Exclude high GA"))
+                                     "Exclude high GA",
+                                     "Sowing day + cultivar", "Cycle duration + cultivar"))
 sens_f <- facet_process(sens_f)
 g4b <- ggplot(sens_f, aes(lag_day, std_beta, color = scenario, group = scenario)) +
   functional_band_shadow() +
@@ -285,7 +300,8 @@ g4b <- ggplot(sens_f, aes(lag_day, std_beta, color = scenario, group = scenario)
   panel_letter_layer(sens_f, "process") +
   scale_x_continuous(limits = range(analysis_days), breaks = functional_day_breaks) +
   labs(x = "Days before grain evaluation", y = "Outcome SD per 1-SD higher daily process") +
-  theme_paper(8.6) + theme(legend.text = element_text(size = 7.5))
+  theme_paper(8.6) + theme(legend.text = element_text(size = 7.5)) +
+  guides(color = guide_legend(nrow = 2, byrow = TRUE))
 save_final(g4b, "figure4b_functional_shared_sensitivities.png", 9.0, 9.0)
 
 loso_f <- read_final("loso_functional_curves.csv")

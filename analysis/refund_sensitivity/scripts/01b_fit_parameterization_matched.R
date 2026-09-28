@@ -61,9 +61,9 @@ fit_matched <- function(trials, mat, days, center = NULL) {
 
 bootstrap_matched <- function(trials, mat, fit_obj, days, reps, seed) {
   set.seed(seed)
-  units <- unique(trials[c("met_unit", "season")])
-  if (anyDuplicated(units$met_unit)) stop("Meteorological units cross seasons.")
-  strata <- split(units$met_unit, units$season)
+  units <- unique(trials[c("weather_cluster_id", "season")])
+  if (anyDuplicated(units$weather_cluster_id)) stop("Weather clusters cross seasons.")
+  strata <- split(units$weather_cluster_id, units$season)
   curves <- matrix(NA_real_, reps, length(days))
   imap <- v4_interval_map(days)
   contrasts <- matrix(NA_real_, reps, nlevels(imap),
@@ -72,7 +72,7 @@ bootstrap_matched <- function(trials, mat, fit_obj, days, reps, seed) {
   for (b in seq_len(reps)) {
     sampled <- unlist(lapply(strata, function(u) sample(u, length(u), replace = TRUE)),
                       use.names = FALSE)
-    idx <- unlist(lapply(sampled, function(u) which(trials$met_unit == u)),
+    idx <- unlist(lapply(sampled, function(u) which(trials$weather_cluster_id == u)),
                   use.names = FALSE)
     tryCatch({
       fb <- fit_matched(trials[idx, , drop = FALSE], mat[idx, , drop = FALSE],
@@ -214,9 +214,8 @@ spec <- data.frame(
   value = c("parameterization-matched software sensitivity", "-80:-1",
             "refund::lf() in refund::pfr()", "cubic P-spline", "4",
             "none (fx=TRUE)", "Riemann", "season fixed effect",
-            "season-stratified meteorological-unit cluster bootstrap", reps,
+            "season-stratified ERA5 cell-by-season cluster bootstrap", reps,
             seed_base, as.character(utils::packageVersion("refund")))
 )
 v4_write_csv(spec, file.path(root, "config", "matched_refund_specification.csv"))
 message("Parameterization-matched refund analysis completed.")
-

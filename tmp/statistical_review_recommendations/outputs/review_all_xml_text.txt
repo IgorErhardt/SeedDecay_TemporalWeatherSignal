@@ -1,0 +1,79 @@
+
+## word/comments.xml
+P001	Removido
+P002	Isso nos fizemos também, mas removemos eventualmente. E acho que só para WetDays
+
+## word/document.xml
+P001	Statistical review — Seed decay temporal weather signatures
+P002	Sep 28, 2026 · @Emerson
+P003	Summary and priorities
+P004	The framework is sound and appropriately cautious for 72 trials, but the conclusions currently outrun the evidence. The rainfall signal at about −60 to −40 days is defensible as a hypothesis. The Tmin reversal is mostly a product of the spline basis. The fixes are mainly re-framing plus five added analyses, in this order:
+P005	☐ 1. Refit all models with inference clustered at grid cell × season (or a site random effect), for both methods.
+P006	☐ 2. Adjust for sowing date or cycle length and cultivar; add a phenology-anchored sensitivity if R5/R7 dates exist.
+P007	☐ 3. Replace in-sample incremental R² with adjusted R² plus leave-one-season-out prediction error.
+P008	☐ 4. Add a penalized distributed-lag model as a third view, and report summed coefficients over adjacent intervals.
+P009	☐ 5. Report correlations among interval summaries and among weather processes.
+P010	☐ 6. Fix the internal inconsistencies (checklist below) and soften the wording on Tmin and on "prespecified".
+P011	All code below assumes a long data frame wx (one row per trial × day, with lag from −80 to −1) and a trial-level data frame dat with DG, season, cultivar, sow_date, harvest_date, cell_id (ERA5 cell) and site. Adapt names to the repository.
+P012	Major issues
+P013	1. Trials are not independent
+P014	Figure 1 shows 22 trials in one ERA5 cell and 14 in another, yet the duplicate rule merged only 2 trials (72 → 70). The "cluster" bootstrap is therefore effectively a trial bootstrap, and the interval models use naive t-based CIs. Trials sharing a cell and season share weather, inoculum and management, so the effective n is well below 72.
+P015	What to do: cluster at cell × season, use the same clustered inference for both methods, and report the number of clusters.
+P016	library(clubSandwich)dat$clust <- interaction(dat$cell_id, dat$season, drop = TRUE)n_distinct(dat$clust)   # report this number# interval model: int_dat has one row per trial with rain_1 ... rain_8fit <- lm(DG ~ season + rain_1 + rain_2 + rain_3 + rain_4 +            rain_5 + rain_6 + rain_7 + rain_8, data = int_dat)V <- vcovCR(fit, cluster = int_dat$clust, type = "CR2")coef_test(fit, vcov = V, test = "Satterthwaite")Wald_test(fit, constraints = constrain_zero("^rain_", reg_ex = TRUE),          vcov = V, test = "HTZ")   # replaces the partial F-test# functional model bootstrap: resample clusters within seasonboot_ids <- function(d) {  d |> distinct(season, clust) |>    group_by(season) |> slice_sample(prop = 1, replace = TRUE) |>    mutate(rep = row_number()) |> ungroup() |>    left_join(d, by = c("season", "clust"), relationship = "many-to-many")}
+P017	Expect wider intervals. Rainfall at −60 to −51 (CI 0.03 to 4.90) may not survive.
+P018	2. The harvest anchor is confounded with sowing date and phenology
+P019	Season is a fixed effect, so the signal is within-season, and much of that contrast comes from planting-date trials. Sowing date shifts weather, phenology and cycle length together. With 93–137 days from sowing to harvest, "−50 days" is a different stage in different trials. Harvest date is also partly endogenous, because rain delays harvest and delayed harvest raises DG. That may explain why −10 to −1 shows nothing.
+P020	library(lubridate)int_dat <- int_dat |>  mutate(cycle = as.numeric(harvest_date - sow_date),         sow_doy = yday(sow_date))fit_adj <- update(fit, . ~ . + cycle + cultivar)# compare coefficients and the Wald test with and without adjustment# if R5 or R7 dates exist for a subset: rebuild windows relative to that stagewx_pheno <- wx |> left_join(dat |> select(trial, r7_date), by = "trial") |>  mutate(lag_r7 = as.numeric(date - r7_date)) |>  filter(between(lag_r7, -60, 19))
+P021	Also state clearly whether t = 0 is harvest or grain evaluation; the text uses both.
+P022	3. The functional shapes come largely from the basis
+P023	A cubic B-spline with 4 df over the whole domain has no interior knot when an intercept column is included, so β(t) is a global cubic polynomial. That basis can only make one hump (rainfall) or one S-shape (Tmin). Under REML penalization the Tmin reversal collapses to a nearly straight line with the band covering zero everywhere (Fig. S6D). It should not be called "reproducible".
+P024	The cross-method agreement criterion is also asymmetric. The 4-df curve cannot represent the RH and Tmax alternations, so its failure to reproduce them is not evidence against them. Conversely, eight correlated adjacent intervals entered together are the classic setup for seesawing signs. The RH and Tmax alternations are probably collinearity artifacts, and the paper should argue that directly.
+P025	# check the basisB <- splines::bs(-80:-1, df = 4, intercept = TRUE)attr(B, "knots")          # numeric(0): a global cubic# collinearity among interval summariescor(int_dat |> select(starts_with("rain_")))car::vif(fit)# summed effect over adjacent intervals (more stable estimand), clustered SEL <- setNames(rep(0, length(coef(fit))), names(coef(fit)))L[c("rain_3", "rain_4")] <- 1          # -60:-51 plus -50:-41est <- sum(L * coef(fit))se  <- sqrt(drop(t(L) %*% as.matrix(V) %*% L))c(est = est, lo = est - 1.96 * se, hi = est + 1.96 * se)# penalized scalar-on-function with a richer basis (mgcv linear functional term)library(mgcv)Q   <- as.matrix(wide_rain[, -1])               # n x 80, centred by lagLAG <- matrix(-80:-1, nrow(Q), 80, byrow = TRUE)gfit <- gam(DG ~ season + s(LAG, by = Q, bs = "cr", k = 10),            data = dat, method = "REML")plot(gfit, shade = TRUE)   # does the data support more than one bump?
+P026	4. The headline signal leans on the three highest-DG trials
+P027	Without those trials, the rainfall global P rises to 0.128 (interval) and 0.061 (functional), and the REML band includes zero (Fig. S6A). Tmax (interval) gets stronger instead (P = 0.003). The residual plots confirm the models miss exactly these trials. The abstract and conclusions should say this plainly.
+P028	infl <- influence.measures(fit)summary(infl)                     # Cook's D, DFBETAS for the 3 trialsdat |> slice_max(DG, n = 3) |>  select(trial, season, site, cultivar, sow_date, DG)   # are they one site or planting date?MASS::rlm(formula(fit), data = int_dat)   # robust fit as a further check
+P029	5. Incremental R² is in-sample and optimistic
+P030	Under the null, adding p predictors with n = 72 and 4 season terms gains about p / (n − 4) in R². That is about 0.12 for the 8-interval models (observed 0.25–0.27) and 0.06 for the functional models (observed about 0.15). Tmax SoF (0.057) is at the null expectation. Report adjusted R², a permutation null, and leave-one-season-out prediction.
+P031	# permutation null: shuffle whole weather trajectories within seasonperm_r2 <- replicate(999, {  d <- int_dat |> group_by(season) |>    mutate(idx = sample(n()),           across(starts_with("rain_"), ~ .x[idx])) |>   # same index for all columns    ungroup()  summary(lm(formula(fit), d))$r.squared -    summary(lm(DG ~ season, d))$r.squared})obs_r2 <- summary(fit)$r.squared - summary(lm(DG ~ season, int_dat))$r.squaredmean(perm_r2 >= obs_r2)   # permutation P; report quantile(perm_r2, .5) too# leave-one-season-out prediction on within-season centred datad <- int_dat |> group_by(season) |>  mutate(DGc = DG - mean(DG),         across(starts_with("rain_"), ~ .x - mean(.x))) |> ungroup()loso <- purrr::map_dfr(unique(d$season), function(s) {  tr <- filter(d, season != s); te <- filter(d, season == s)  f  <- lm(DGc ~ rain_1 + rain_2 + rain_3 + rain_4 + rain_5 + rain_6 + rain_7 + rain_8, tr)  tibble(season = s, obs = te$DGc, pred = predict(f, te))})1 - sum((loso$obs - loso$pred)^2) / sum(loso$obs^2)   # out-of-sample R2 vs null of 0cor(loso$obs, loso$pred, method = "spearman")
+P032	A negative out-of-sample R² would be an honest and important finding; it would not sink the paper, but it changes the framing.
+P033	6. "Prespecified" needs support
+P034	The word appears throughout, but the AI statement describes "expanding the analytical space", and the Fig. 6 caption mentions an "extended −60:−1-day domain" fit that appears nowhere else. Reviewers will ask for evidence.
+P035	If early commits or a dated plan exist, cite them (e.g., git log --reverse --format='%ad %s' -- analysis/).
+P036	If not, drop "prespecified" or limit it to what was fixed before the results were seen.
+P037	List every model variant tried in a supplementary table, including dropped ones.
+P038	Moderate issues
+P039	Response model
+P040	DG is a bounded, right-skewed percentage, and the residual plots show variance growing with the fitted value. Gaussian identity plus a log1p sensitivity is acceptable. A log-link model with robust SEs is more natural and gives multiplicative effects that are easier to discuss. Sample mass ranged from 25 to 125 g, so precision varies too.
+P041	fit_q <- glm(DG / 100 ~ season + rain_1 + rain_2 + rain_3 + rain_4 +               rain_5 + rain_6 + rain_7 + rain_8,             family = quasibinomial(link = "logit"), data = int_dat)# or, if DG > 0 everywhere: family = Gamma(link = "log")coef_test(fit_q, vcov = vcovCR(fit_q, cluster = int_dat$clust, type = "CR2"))# optional weights: weights = sample_g / mean(sample_g)
+P042	Weather summaries are not defined
+P043	The Methods do not say whether each interval value is a mean or a sum of daily values. Averaging log(1 + rain) mixes rain frequency with intensity. Wetness-oriented summaries from hourly ERA5 map better onto the biology and should be at least a sensitivity analysis.
+P044	wx_int <- wx |>  mutate(interval = cut(lag, breaks = seq(-80, 0, 10), right = FALSE)) |>  group_by(trial, interval) |>  summarise(log_rain_mean = mean(log1p(rain)),            rainy_days    = sum(rain >= 1),            rh90_hours    = sum(rh_hours_ge90),   # from hourly ERA5            .groups = "drop")
+P045	Each process is modelled alone
+P046	Rain, RH, Tmax and Tmin are strongly correlated, so the four "signals" may be one warm, wet-night signal seen four ways. Show the cross-process correlations by interval, and add one two-process model as a sensitivity.
+P047	wx_int |> select(trial, interval, rain = log_rain_mean) |>  left_join(tmin_int, by = c("trial", "interval")) |>  group_by(interval) |> summarise(r = cor(rain, tmin))# two-process functional modelgfit2 <- gam(DG ~ season + s(LAG, by = Qrain, bs = "cr", k = 6) +                           s(LAG, by = Qtmin, bs = "cr", k = 6),             data = dat, method = "REML")
+P048	Multiplicity versus wording
+P049	Treating P continuously is fine, but labelling intervals "supported" when a CI excludes zero re-dichotomizes across about 4 variables × 2 methods × 8 intervals. Either say this explicitly in the Methods or drop the "supported" column and show all estimates.
+P050	Missing descriptives
+P051	Add a table with n per season, distinct sites and ERA5 cells, trials by type (fungicide vs planting date), trials by cultivar, and summary statistics of each weather variable by interval.
+P052	dat |> count(season, trial_type, cultivar)dat |> summarise(sites = n_distinct(site), cells = n_distinct(cell_id), clusters = n_distinct(clust))
+P053	Inconsistencies to fix
+P054	Each of these is quick to fix, and each would be caught by a reviewer.
+P055	☐ Number of intervals: eight are listed (−80 to −1), but the Methods, Fig. 2 caption and Discussion say "seven"; the text says "other eight intervals" (should be seven) and Fig. 2 says "other six".
+P056	☐ Two figures are numbered Figure 1 (the map and the DG distributions).
+P057	☐ Fig. 6 and 7 captions describe a "thick black line" and grey shading as the confidence band; the plots have neither, and the grey shading marks intervals.
+P058	☐ Fig. 6 caption mentions an "extended −60:−1-day domain" fit that is not in the Methods or legend.
+P059	☐ Legends in Figs. 3 and 6 say "GA" instead of "DG".
+P060	☐ Fig. S2 says "Bros-interval"; Fig. S2 and S4 captions say the smoother is blue, but it is red.
+P061	☐ Units: Table 2 gives contrasts per 1 SD, Fig. S7 per one unit on the original scale, and Figs. 3, 6, 7 are fully standardized. State one convention per estimand.
+P062	☐ Primary functional fit: the Methods say both splines + OLS and refund; say which one produced the primary results.
+P063	☐ t = 0 is called both "harvest" and "evaluation date".
+P064	☐ Define the interval summary (mean or sum of daily values).
+P065	☐ Report n per season, sites and ERA5 cells.
+P066	☐ Minor: the title says "Cerrado" though some sites are Amazon transition; keywords list Diaporthe and Fusarium without pathogen data.
+P067	Suggested rewording
+P068	These are starting points; revise them once the new analyses are in, since clustered inference may change the numbers.
+P069	Abstract, rainfall sentence. "The most consistent signal was a broad positive association between rainfall and DG approximately 60 to 40 days before harvest. This association weakened when the three trials with the highest DG were excluded and should be regarded as a candidate for prospective validation."
+P070	Abstract and Discussion, minimum temperature. Replace "reproducible" with: "Minimum temperature showed a positive-then-negative pattern under the primary low-dimensional basis, which was not retained when the functional term was penalized."
+P071	Discussion, RH and Tmax. "The alternating interval estimates for relative humidity and maximum temperature are consistent with collinearity among adjacent intervals and should not be interpreted as distinct biological windows."
+P072	Methods, prespecification. If no dated plan exists: "The interval boundaries, basis dimension and sensitivity scenarios were fixed before model results were examined; all variants explored are listed in Table Sx."
+P073	Limitations, add. One sentence each on the non-independence of trials within grid cells and seasons, and on anchoring to harvest date rather than crop stage.

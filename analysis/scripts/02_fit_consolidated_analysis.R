@@ -18,8 +18,6 @@ registry <- consolidated_registry()
 analysis_days <- -80:-1
 trials <- readRDS(file.path(p$processed, "trial_cohort_v4.rds"))
 weather <- consolidated_add_processes(readRDS(file.path(p$processed, "weather_era5_absolute_days.rds")))
-unit_trials <- readRDS(file.path(p$processed, "meteorological_unit_cohort.rds"))
-unit_weather <- consolidated_add_processes(readRDS(file.path(p$processed, "meteorological_unit_weather.rds")))
 # Outcome-only influence flags are defined before any outcome-weather fit.
 q <- stats::quantile(trials$ga, c(0.25, 0.75), type = 8)
 fence <- c(q[1] - 1.5 * diff(q), q[2] + 1.5 * diff(q))
@@ -27,12 +25,9 @@ trials$outcome_influence_flag <- trials$ga < fence[1] | trials$ga > fence[2]
 saveRDS(trials, file.path(p$processed, "trial_cohort_v4_with_outcome_flags.rds"))
 v4_write_csv(trials, file.path(p$processed, "trial_cohort_v4_with_outcome_flags.csv"))
 trials$log_ga <- log1p(trials$ga)
-unit_trials$log_ga <- log1p(unit_trials$ga)
-flagged_ids <- trials$trial_id[trials$outcome_influence_flag]
-unit_trials$outcome_influence_flag <- vapply(strsplit(unit_trials$member_trials, "\\|"),
-                                             function(x) any(x %in% flagged_ids), logical(1))
 
-stopifnot(nrow(trials) == 72L, nrow(unit_trials) == length(unique(trials$met_unit)),
+stopifnot(nrow(trials) == 72L,
+          all(c("era5_cell_id", "weather_cluster_id") %in% names(trials)),
           all(table(weather$trial_id) == length(analysis_days)),
           identical(range(weather$lag_day), range(analysis_days)),
           all(trials$evaluation_date == trials$recorded_evaluation_date + 20L),
@@ -44,13 +39,15 @@ spec <- data.frame(
   item = c("analysis_anchor", "source_date_correction_days", "primary_domain",
            "broad_intervals", "functional_basis",
            "functional_df", "primary_bootstrap_reps", "sensitivity_bootstrap_reps",
-           "bootstrap_unit", "bootstrap_stratification", "adjustment",
+           "bootstrap_unit", "bootstrap_stratification", "primary_inference", "adjustment",
            "shared_sensitivities", "processes", "primary_seed", "sensitivity_seed"),
   value = c("grain evaluation date", "20", "-80:-1",
             paste(levels(v4_interval_map(analysis_days)), collapse = "|"),
             "cubic B-spline", "4", "999", "499",
-            "meteorological exposure unit cluster", "season", "season fixed effect",
-            "log1p(GA)|meteorological-unit aggregation|exclude outcome-only high GA|leave one season out",
+            "ERA5 cell-by-season cluster", "season",
+            "CR2 covariance; Satterthwaite coefficient tests; HTZ process tests",
+            "season fixed effect",
+            "log1p(GA)|exclude outcome-only high GA|sowing day + cultivar|cycle duration + cultivar",
             paste(registry$process, collapse = "|"), "24041987", "24044001")
 )
 v4_write_csv(spec, file.path(p$config, "consolidated_analysis_specification.csv"))
@@ -66,11 +63,15 @@ keep <- !trials$outcome_influence_flag
 sensitivities <- list(
   consolidated_tag(consolidated_fit_set(trials, weather, registry, analysis_days, "log_ga",
     bootstrap_reps = 499L, seed_base = 24044101L), "log1p(GA)"),
-  consolidated_tag(consolidated_fit_set(unit_trials, unit_weather, registry, analysis_days, "ga",
-    bootstrap_reps = 499L, seed_base = 24044301L), "Meteorological units"),
   consolidated_tag(consolidated_fit_set(trials[keep, ],
     weather[weather$trial_id %in% trials$trial_id[keep], ], registry, analysis_days, "ga",
-    bootstrap_reps = 499L, seed_base = 24044401L), "Exclude high GA")
+    bootstrap_reps = 499L, seed_base = 24044401L), "Exclude high GA"),
+  consolidated_tag(consolidated_fit_set(trials, weather, registry, analysis_days, "ga",
+    covariates = c("season", "sowing_doy", "cultivar"),
+    bootstrap_reps = 499L, seed_base = 24044601L), "Sowing day + cultivar"),
+  consolidated_tag(consolidated_fit_set(trials, weather, registry, analysis_days, "ga",
+    covariates = c("season", "cycle_days", "cultivar"),
+    bootstrap_reps = 499L, seed_base = 24044701L), "Cycle duration + cultivar")
 )
 
 message("Fitting leave-one-season-out stress tests...")
@@ -162,7 +163,7 @@ expected <- expand.grid(process = registry$process,
                         stringsAsFactors = FALSE)
 expected$expected_fits <- ifelse(
   expected$family == "Primary", 1L,
-  ifelse(expected$family == "Shared sensitivities", 3L, 4L)
+  ifelse(expected$family == "Shared sensitivities", 4L, 4L)
 )
 expected$observed_fits <- mapply(function(proc, method, family) {
   tab <- if (method == "Broad intervals") {
