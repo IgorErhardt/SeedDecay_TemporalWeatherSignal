@@ -1,0 +1,5 @@
+"process","maximum_curve_difference","maximum_p_value_difference","label"
+"Tmin",2.99760216648792e-14,1.59872115546023e-14,"Minimum temperature"
+"LogRain",2.99760216648792e-15,3.89965837399586e-15,"Log rainfall amount"
+"Tmax",1.06026298851702e-14,1.29896093881143e-14,"Maximum temperature"
+"RH",7.99707522425308e-16,2.10387263166467e-14,"Relative humidity"

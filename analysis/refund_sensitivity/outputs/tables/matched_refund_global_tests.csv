@@ -1,0 +1,5 @@
+"process","process_label","n","edf","ref_df","f_statistic","p_value","r_squared","incremental_r_squared","residual_sd","converged","method"
+"Tmin","Minimum temperature",72,4.00000000000001,4,2.99527566001821,0.0249254671898764,0.191008530729133,0.151447028566831,8.49021819853117,TRUE,"refund::pfr; ps k=4 m=2; fx=TRUE"
+"LogRain","Log rainfall amount",72,4,4,3.03197202172162,0.0236340689713751,0.192568381885784,0.153006879723482,8.48202907221077,TRUE,"refund::pfr; ps k=4 m=2; fx=TRUE"
+"Tmax","Maximum temperature",72,4,4,1.00424397961074,0.411986739519141,0.0962834934720246,0.0567219913097228,8.97352316211658,TRUE,"refund::pfr; ps k=4 m=2; fx=TRUE"
+"RH","Relative humidity",72,4,4,1.91893111330465,0.118018131198965,0.142414473930679,0.102852971768377,8.74149275627347,TRUE,"refund::pfr; ps k=4 m=2; fx=TRUE"

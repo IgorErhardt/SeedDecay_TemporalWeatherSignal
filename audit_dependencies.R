@@ -9,7 +9,7 @@ if (dir.exists(project_library)) .libPaths(c(project_library, .libPaths()))
 
 roots <- c(
   "digest", "ggplot2", "ggrepel", "lmtest", "patchwork", "readxl",
-  "r4pde", "rnaturalearth", "sf"
+  "r4pde", "refund", "rnaturalearth", "sf"
 )
 installed <- as.data.frame(installed.packages(), stringsAsFactors = FALSE)
 installed <- installed[!duplicated(installed$Package), , drop = FALSE]

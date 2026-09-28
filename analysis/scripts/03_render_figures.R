@@ -28,6 +28,7 @@ owned <- c(
   "figureS3_functional_coefficient_heatmap.png",
   "figureS4_broad_residual_vs_fitted.png", "figureS5_broad_normal_qq.png",
   "figureS6_functional_residual_vs_fitted.png", "figureS7_functional_normal_qq.png",
+  "figureS8_refund_penalized_curves.png", "figureS9_refund_penalized_contrasts.png",
   "figure4b_functional_shared_sensitivities.png", "figure5b_functional_loso_stability.png",
   "figure8_ga_distributions.png", "figure3b_functional_pointwise_bootstrap.png"
 )
@@ -41,7 +42,7 @@ read_final <- function(name) utils::read.csv(file.path(tables, name), check.name
 registry <- read_final("process_registry.csv")
 
 # The public registry contains only the four retained processes.
-keep_processes <- c("Tmin", "LogRain", "Tmax", "RH")
+keep_processes <- c("LogRain", "RH", "Tmax", "Tmin")
 registry$include_analysis <- registry$process %in% keep_processes
 
 missing_keep <- setdiff(keep_processes, registry$process)
@@ -63,6 +64,9 @@ display_color_lookup <- setNames(registry$color, registry$label)
 
 analysis_days <- -80:-1
 interval_primary <- levels(v4_interval_map(analysis_days))
+# Display the retrospective domain at regular 10-day intervals while retaining
+# the final modeled day (-1), which does not fall on the 10-day sequence.
+functional_day_breaks <- c(seq(-80, -10, by = 10), -1)
 
 theme_paper <- function(base_size = 9.2) {
   theme_minimal(base_size = base_size, base_family = "sans") +
@@ -155,7 +159,7 @@ g3 <- ggplot(primary_f, aes(lag_day, beta_per_process_sd, color = process, fill 
   facet_wrap(~process, ncol = 2, scales = "free_y") + panel_letter_layer(primary_f, "process") +
   labs(x = "Days before grain evaluation",
        y = "Daily association with DG per 1-SD higher process") +
-  scale_x_continuous(limits = range(analysis_days), breaks = c(seq(-80, -20, 20), -1)) + theme_paper()
+  scale_x_continuous(limits = range(analysis_days), breaks = functional_day_breaks) + theme_paper()
 save_final(g3, owned[3], 8.1, 8.3)
 
 # Additional descriptive uncertainty view. Unlike Figure 3's simultaneous
@@ -172,7 +176,7 @@ g3b <- ggplot(primary_f, aes(lag_day, beta_per_process_sd, color = process, fill
   facet_wrap(~process, ncol = 2, scales = "free_y") + panel_letter_layer(primary_f, "process") +
   labs(x = "Days before grain evaluation",
        y = "Daily association with DG per 1-SD higher process") +
-  scale_x_continuous(limits = range(analysis_days), breaks = c(seq(-80, -20, 20), -1)) + theme_paper()
+  scale_x_continuous(limits = range(analysis_days), breaks = functional_day_breaks) + theme_paper()
 save_final(g3b, "figure3b_functional_pointwise_bootstrap.png", 8.1, 8.3)
 
 trials <- readRDS(file.path(p$processed, "trial_cohort_v4_with_outcome_flags.rds"))
@@ -237,7 +241,7 @@ sens_b$interval <- factor(sens_b$interval, levels = interval_primary)
 g4 <- ggplot(sens_b, aes(interval, std_estimate, color = scenario, group = scenario)) +
   geom_hline(yintercept = 0, color = "#8798AA", linewidth = .4) +
   geom_errorbar(aes(ymin = std_low, ymax = std_high), width = 0,
-                position = position_dodge(width = .62), alpha = .35, linewidth = .35) +
+                position = position_dodge(width = .62), alpha = .35, linewidth = .55) +
   geom_point(position = position_dodge(width = .62), size = 1.25) +
   facet_wrap(~process, ncol = 2, scales = "free_y") + panel_letter_layer(sens_b, "process") +
   labs(x = "Days before grain evaluation", y = "Outcome SD per exposure-summary SD") +
@@ -257,7 +261,7 @@ loso_b$interval <- factor(loso_b$interval, levels = interval_primary)
 g5 <- ggplot(loso_b, aes(interval, std_estimate, color = scenario, group = scenario)) +
   geom_hline(yintercept = 0, color = "#8798AA", linewidth = .4) +
   geom_errorbar(aes(ymin = std_low, ymax = std_high), width = 0,
-                position = position_dodge(width = .62), alpha = .35, linewidth = .35) +
+                position = position_dodge(width = .62), alpha = .35, linewidth = .55) +
   geom_point(position = position_dodge(width = .62), size = 1.3) +
   facet_wrap(~process, ncol = 2, scales = "free_y") + panel_letter_layer(loso_b, "process") +
   labs(x = "Days before grain evaluation", y = "Outcome SD per exposure-summary SD") +
@@ -279,7 +283,7 @@ g4b <- ggplot(sens_f, aes(lag_day, std_beta, color = scenario, group = scenario)
   geom_hline(yintercept = 0, color = "#8798AA", linewidth = .4) +
   geom_line(linewidth = .65) + facet_wrap(~process, ncol = 2, scales = "free_y") +
   panel_letter_layer(sens_f, "process") +
-  scale_x_continuous(limits = range(analysis_days), breaks = c(seq(-80, -20, 20), -1)) +
+  scale_x_continuous(limits = range(analysis_days), breaks = functional_day_breaks) +
   labs(x = "Days before grain evaluation", y = "Outcome SD per 1-SD higher daily process") +
   theme_paper(8.6) + theme(legend.text = element_text(size = 7.5))
 save_final(g4b, "figure4b_functional_shared_sensitivities.png", 9.0, 9.0)
@@ -293,7 +297,7 @@ g5b <- ggplot(loso_f, aes(lag_day, std_beta, color = scenario, group = scenario)
   geom_hline(yintercept = 0, color = "#8798AA", linewidth = .4) +
   geom_line(linewidth = .65) + facet_wrap(~process, ncol = 2, scales = "free_y") +
   panel_letter_layer(loso_f, "process") +
-  scale_x_continuous(limits = range(analysis_days), breaks = c(seq(-80, -20, 20), -1)) +
+  scale_x_continuous(limits = range(analysis_days), breaks = functional_day_breaks) +
   labs(x = "Days before grain evaluation", y = "Outcome SD per 1-SD higher daily process") +
   theme_paper(8.6) + theme(legend.text = element_text(size = 7.5))
 save_final(g5b, "figure5b_functional_loso_stability.png", 9.0, 9.0)
@@ -368,7 +372,7 @@ heat$process <- factor(heat$process, levels = rev(levels(heat$process)))
 gs3 <- ggplot(heat, aes(lag_day, process, fill = beta_per_process_sd)) + geom_tile() +
   scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
                        name = "Association\nwith DG") +
-  scale_x_continuous(limits = c(-80.5, -0.5), breaks = c(seq(-80, -20, 20), -1),
+  scale_x_continuous(limits = c(-80.5, -0.5), breaks = functional_day_breaks,
                      expand = expansion(mult = 0)) +
   geom_vline(xintercept = seq(-70.5, -10.5, 10), color = "white", linewidth = .35) +
   labs(x = "Days before grain evaluation", y = NULL) + theme_paper() + theme(panel.grid = element_blank())
@@ -396,6 +400,84 @@ for (method in c("Broad intervals", "Scalar on function")) {
     save_final(b, owned[13], 9.0, 7.5)
   }
 }
+
+# S8-S9: REML-penalized refund sensitivity. These are the only final figures
+# promoted from the sensitivity branch: daily coefficient functions with
+# simultaneous bands and integrated 10-day contrasts.
+refund_tables <- file.path("analysis", "refund_sensitivity", "outputs", "tables")
+refund_required <- file.path(refund_tables, c(
+  "refund_functional_curves.csv", "refund_interval_contrasts.csv"
+))
+if (!all(file.exists(refund_required))) {
+  stop("Missing REML-penalized refund sensitivity tables. Run the refund fitting stage first.")
+}
+
+refund_f <- utils::read.csv(refund_required[1], check.names = FALSE,
+                            stringsAsFactors = FALSE)
+primary_refund_f <- read_final("primary_functional_curves.csv")
+primary_refund_f$method <- "Primary fixed 4-df spline"
+refund_f$method <- "REML-penalized refund"
+refund_curve <- rbind(
+  primary_refund_f[c("process", "process_label", "lag_day", "beta_per_process_sd",
+                     "conf_low_per_process_sd", "conf_high_per_process_sd", "method")],
+  refund_f[c("process", "process_label", "lag_day", "beta_per_process_sd",
+             "conf_low_per_process_sd", "conf_high_per_process_sd", "method")]
+)
+refund_curve <- facet_process(refund_curve)
+refund_curve$method <- factor(refund_curve$method,
+                              levels = c("Primary fixed 4-df spline",
+                                         "REML-penalized refund"))
+refund_method_colors <- c("Primary fixed 4-df spline" = "#2C7FB8",
+                          "REML-penalized refund" = "#D95F0E")
+gs8 <- ggplot(refund_curve,
+              aes(lag_day, beta_per_process_sd, color = method, fill = method)) +
+  geom_hline(yintercept = 0, color = "#8798AA", linewidth = .45) +
+  geom_ribbon(aes(ymin = conf_low_per_process_sd,
+                  ymax = conf_high_per_process_sd),
+              alpha = .12, linewidth = 0) +
+  geom_line(aes(linetype = method), linewidth = .8) +
+  scale_color_manual(values = refund_method_colors) +
+  scale_fill_manual(values = refund_method_colors) +
+  scale_linetype_manual(values = c("solid", "22")) +
+  facet_wrap(~process, ncol = 2, scales = "free_y") +
+  panel_letter_layer(refund_curve, "process") +
+  scale_x_continuous(limits = range(analysis_days),
+                     breaks = functional_day_breaks) +
+  labs(x = "Days before grain evaluation",
+       y = "Daily association with DG per 1-SD higher process") +
+  theme_paper(8.7) + theme(legend.text = element_text(size = 7.5))
+save_final(gs8, "figureS8_refund_penalized_curves.png", 8.5, 7.0)
+
+refund_c <- utils::read.csv(refund_required[2], check.names = FALSE,
+                            stringsAsFactors = FALSE)
+primary_refund_c <- read_final("primary_functional_contrasts.csv")
+primary_refund_c$method <- "Primary fixed 4-df spline"
+refund_c$method <- "REML-penalized refund"
+refund_contrast <- rbind(
+  primary_refund_c[c("process", "process_label", "interval", "estimate",
+                     "conf_low", "conf_high", "method")],
+  refund_c[c("process", "process_label", "interval", "estimate",
+             "conf_low", "conf_high", "method")]
+)
+refund_contrast <- facet_process(refund_contrast)
+refund_contrast$interval <- factor(refund_contrast$interval, levels = interval_primary)
+refund_contrast$method <- factor(refund_contrast$method,
+                                 levels = c("Primary fixed 4-df spline",
+                                            "REML-penalized refund"))
+gs9 <- ggplot(refund_contrast,
+              aes(interval, estimate, color = method, group = method)) +
+  geom_hline(yintercept = 0, color = "#8798AA", linewidth = .45) +
+  geom_errorbar(aes(ymin = conf_low, ymax = conf_high), width = 0,
+                position = position_dodge(width = .5), linewidth = .45) +
+  geom_point(position = position_dodge(width = .5), size = 1.65) +
+  scale_color_manual(values = refund_method_colors) +
+  facet_wrap(~process, ncol = 2, scales = "free_y") +
+  panel_letter_layer(refund_contrast, "process") +
+  labs(x = "Days before grain evaluation", y = "Integrated DG contrast") +
+  theme_paper(8.7) +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        legend.text = element_text(size = 7.5))
+save_final(gs9, "figureS9_refund_penalized_contrasts.png", 8.7, 7.2)
 
 manifest <- v4_manifest(file.path(out, owned), getwd())
 v4_write_csv(manifest, file.path(p$freeze, "final", "final_figure_manifest.csv"))

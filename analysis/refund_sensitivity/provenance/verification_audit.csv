@@ -1,0 +1,16 @@
+"check","passed"
+"four processes",TRUE
+"80 lags per process",TRUE
+"domain -80:-1",TRUE
+"bootstrap complete",TRUE
+"finite curves and bands",TRUE
+"eight contrasts",TRUE
+"four converged penalized fits",TRUE
+"valid penalized EDF",TRUE
+"four LOSO curves per process",TRUE
+"four converged LOSO fits",TRUE
+"four finite curve comparisons",TRUE
+"four survival classifications",TRUE
+"report states rainfall survival",TRUE
+"report excludes matched-only framing",TRUE
+"rendered HTML nonempty",TRUE

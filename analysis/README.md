@@ -17,6 +17,12 @@ Tmin, LogRain, Tmax, and RH. Each is analyzed separately using:
 2. four-degree-of-freedom scalar-on-function regression with
    meteorological-unit cluster-bootstrap uncertainty.
 
+As a prespecified model-form sensitivity, the primary functional curves are
+also compared with REML-penalized `refund::pfr()` fits using the same data,
+season adjustment, lag domain, and cluster-bootstrap design. Only the daily
+curve and integrated-contrast comparisons are promoted as supplementary
+figures.
+
 No LASSO, automated interval selection, daily search, interaction search, or
 primary multivariable weather model is used.
 

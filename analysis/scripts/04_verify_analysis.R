@@ -39,6 +39,31 @@ add("Primary broad rows", nrow(utils::read.csv(file.path(ft, "primary_broad_coef
 add("Primary functional rows", nrow(utils::read.csv(file.path(ft, "primary_functional_curves.csv"))) == n_processes * 80L,
     paste(n_processes, "processes x 80 lags"))
 
+# REML-penalized scalar-on-function sensitivity is fitted after the frozen
+# primary models and must cover the same processes and lag domain.
+refund_tables <- file.path("analysis", "refund_sensitivity", "outputs", "tables")
+refund_curve_path <- file.path(refund_tables, "refund_functional_curves.csv")
+refund_contrast_path <- file.path(refund_tables, "refund_interval_contrasts.csv")
+refund_global_path <- file.path(refund_tables, "refund_global_tests.csv")
+refund_files_exist <- all(file.exists(c(refund_curve_path, refund_contrast_path,
+                                        refund_global_path)))
+add("Penalized refund outputs", refund_files_exist,
+    "curve, interval-contrast, and global-test tables exist")
+if (refund_files_exist) {
+  refund_curves <- utils::read.csv(refund_curve_path)
+  refund_contrasts <- utils::read.csv(refund_contrast_path)
+  refund_global <- utils::read.csv(refund_global_path)
+  add("Penalized refund coverage",
+      identical(sort(unique(refund_curves$process)), sort(registry$process)) &&
+        all(table(refund_curves$process) == 80L) &&
+        all(table(refund_contrasts$process) == 8L) &&
+        nrow(refund_global) == n_processes && all(refund_global$converged),
+      paste(n_processes, "processes; 80 lags and 8 contrasts each"))
+  add("Penalized refund bootstrap",
+      all(refund_curves$bootstrap_reps >= floor(0.8 * 999)),
+      paste("minimum successful repetitions", min(refund_curves$bootstrap_reps)))
+}
+
 # The active audit is self-contained and does not depend on archived modular
 # outputs. Verify that the cached object and exported tables cover the same
 # registry and scenario structure.
@@ -60,6 +85,7 @@ expected_figures <- c(
   "figureS3_functional_coefficient_heatmap.png",
   "figureS4_broad_residual_vs_fitted.png", "figureS5_broad_normal_qq.png",
   "figureS6_functional_residual_vs_fitted.png", "figureS7_functional_normal_qq.png",
+  "figureS8_refund_penalized_curves.png", "figureS9_refund_penalized_contrasts.png",
   "figure4b_functional_shared_sensitivities.png", "figure5b_functional_loso_stability.png",
   "figure8_ga_distributions.png", "figure3b_functional_pointwise_bootstrap.png"
 )

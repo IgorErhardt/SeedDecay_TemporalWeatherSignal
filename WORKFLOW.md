@@ -35,8 +35,14 @@ raw inputs + validated ERA5 cache
   three shared sensitivities, four season omissions, residual diagnostics
         |
         v
+analysis/refund_sensitivity/scripts/01_fit_refund_sensitivity.R
+  REML-penalized scalar-on-function sensitivity with matched data, adjustment,
+  cluster bootstrap, and leave-one-season-out stress tests
+        |
+        v
 03_render_figures.R
-  one renderer; exactly 17 final analysis figures
+  one renderer; exactly 19 final analysis figures, including two penalized
+  scalar-on-function supplementary comparisons
         |
         v
 04_verify_analysis.R
@@ -59,6 +65,7 @@ Run from the project root:
 | Process definitions and display metadata | `analysis/config/process_registry.csv` |
 | Shared fitting functions | `analysis/R/consolidated_analysis_utils.R` |
 | All primary, sensitivity and LOSO models | `analysis/scripts/02_fit_consolidated_analysis.R` |
+| REML-penalized functional sensitivity | `analysis/refund_sensitivity/scripts/01_fit_refund_sensitivity.R` |
 | All final figures | `analysis/scripts/03_render_figures.R` |
 | Final audit | `analysis/scripts/04_verify_analysis.R` |
 
@@ -75,8 +82,9 @@ figure versions from being recreated.
 - Manifests: `analysis/freeze/final/`
 - Verification: `analysis/outputs/diagnostics/final/consolidated_verification.csv`
 
-The figure directory is an exact whitelist: 17 analysis figures, including
-separate broad-interval and continuous scalar-on-function stability views.
+The figure directory is an exact whitelist: 19 analysis figures, including
+separate broad-interval and continuous scalar-on-function stability views and
+two supplementary primary-versus-penalized functional comparisons.
 Obsolete split and intermediate variants are not generated.
 
 ## Required verification

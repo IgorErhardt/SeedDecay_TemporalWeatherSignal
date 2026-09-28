@@ -1,5 +1,5 @@
 "process","label","domain","role","interval_summary","raw_unit","display_order","color","seed_offset"
-"Tmin","Minimum temperature","Thermal","Retained process","mean","one degree-C higher mean Tmin",1,"#F0A35E",9
-"LogRain","Log rainfall amount","Rainfall","Retained process","mean","one-unit higher mean log1p rainfall",2,"#4393C3",2
+"Tmin","Minimum temperature","Thermal","Retained process","mean","one degree-C higher mean Tmin",4,"#F0A35E",9
+"LogRain","Log rainfall amount","Rainfall","Retained process","mean","one-unit higher mean log1p rainfall",1,"#4393C3",2
 "Tmax","Maximum temperature","Thermal","Retained process","mean","one degree-C higher mean Tmax",3,"#C44E00",7
-"RH","Relative humidity","Atmospheric moisture","Retained process","mean","one percentage-point higher mean RH",4,"#168A83",4
+"RH","Relative humidity","Atmospheric moisture","Retained process","mean","one percentage-point higher mean RH",2,"#168A83",4

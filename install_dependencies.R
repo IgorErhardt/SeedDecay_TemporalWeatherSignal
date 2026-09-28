@@ -5,6 +5,10 @@
 # the bundled project library. Package versions used for the frozen analysis
 # remain recorded in each analysis directory's provenance files.
 
+project_library <- file.path(getwd(), "R-library")
+dir.create(project_library, recursive = TRUE, showWarnings = FALSE)
+.libPaths(c(project_library, .libPaths()))
+
 cran_packages <- c(
   "digest",
   "ggplot2",
@@ -12,6 +16,7 @@ cran_packages <- c(
   "lmtest",
   "patchwork",
   "readxl",
+  "refund",
   "r4pde",
   "rnaturalearth",
   "sf"
@@ -19,7 +24,12 @@ cran_packages <- c(
 
 missing_cran <- cran_packages[!vapply(cran_packages, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing_cran)) {
-  install.packages(missing_cran, repos = "https://cloud.r-project.org")
+  install.packages(
+    missing_cran,
+    lib = project_library,
+    repos = "https://cloud.r-project.org",
+    dependencies = c("Depends", "Imports", "LinkingTo")
+  )
 }
 
 cat("Required R packages are available.\n")

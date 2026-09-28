@@ -1,0 +1,5 @@
+"Process","Primary intervals excluding zero","Penalized intervals excluding zero"
+"Log rainfall amount","-60:-51, -50:-41, -40:-31","-60:-51, -50:-41, -40:-31"
+"Relative humidity","-50:-41","-50:-41, -40:-31, -30:-21"
+"Maximum temperature","None","None"
+"Minimum temperature","-70:-61, -60:-51, -30:-21, -20:-11","-70:-61, -60:-51, -20:-11"
