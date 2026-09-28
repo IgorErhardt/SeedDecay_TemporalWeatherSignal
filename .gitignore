@@ -1,0 +1,9 @@
+R-library/
+.Rhistory
+.Rproj.user/
+.quarto/
+tmp/
+_local_archive/
+**/.qa_*/
+**/.chrome_profile/
+~$*.docx
